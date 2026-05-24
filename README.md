@@ -7,6 +7,10 @@ AI 기반 비판적 뉴스 읽기 보조 도구. 한국 뉴스 사이트의 본�
 - 🟢 **초록** — 수치/정량 표현 (Google 검색용 쿼리 툴팁)
 - 🟡 **노랑** — 핵심 문맥 문장 (시각 표시)
 
+## 설치
+- 안드로이드 [다운로드](https://expo.dev/accounts/ballbot3/projects/newtrospect/builds/05a4ae40-3a12-4d6b-a4d4-de8e5243073e)
+- 브라우저 익스텐션 [다운로드](https://github.com/knu-pepsi/newtrospect/releases/tag/extension)
+
 ## 구조
 
 ```
