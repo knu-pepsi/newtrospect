@@ -6,6 +6,8 @@ import { injectStyles } from "./styles.ts";
 import { updateBadge, hideBadge } from "./badge.ts";
 import { bindPopovers, hidePopover } from "./popover.ts";
 import { backgroundFetch } from "./bg-fetch.ts";
+import { renderCards, renderOneline, removeCardsAndOneline } from "./cards.ts";
+import { renderCharacter, resetCharacterDismiss } from "./character.ts";
 
 /**
  * 콘텐츠 스크립트 진입.
@@ -78,40 +80,83 @@ async function run(introspectMode = false): Promise<void> {
     if (introspectMode) updateBadge({ phase: "error", done: 0, total: enabledKinds.length, message: "본문 요소 찾을 수 없음" });
     return;
   }
-  bindPopovers(root);
-  // 이 시점부터는 둘 다(자동/수동) 진행 상태를 보여준다 — 분석은 몇 초 걸림.
-  updateBadge({ phase: "running", done: 0, total: enabledKinds.length });
+  bindPopovers(root, {
+    // specs/03 — '온화한 표현으로 보기' 버튼이 사용. 같은 client 의 fetch 경로(=background) 재활용.
+    rewriteSensational: async (text, reason) => {
+      const r = await client.rewriteSensational(text, reason);
+      return r.rewritten;
+    },
+  });
+  // 사양: 7개 AI 를 *동시*에 병렬 호출. detect 이후 진행 상태는 7-task 기준.
+  //   1~4: 색깔 마킹 (term / sensational / quantitative / context)
+  //   5:   briefing (3장 카드, Pro 모델)
+  //   6:   oneline  (한 줄 요약, flash 모델)
+  //   7:   character (글 성격 7신호, flash 모델)
+  // 각 호출은 *각자 다른 워커 모델*로 가서 서로 영향 안 줌.
+  // rewrite 는 사용자 클릭 트리거라 이 묶음에 포함 안 함.
+  const cleanedText = detect.cleanedText;
+  const total = enabledKinds.length + 3; // briefing/oneline/character 도 진행 카운트에 포함
+  updateBadge({ phase: "running", done: 0, total });
 
   let done = 0;
   let errors = 0;
-  await Promise.allSettled(
-    enabledKinds.map(async (kind) => {
-      try {
-        const res = await client.analyze(kind, detect.cleanedText);
-        if (ac.signal.aborted) return;
-        // 워커가 반환한 spans 는 detect.cleanedText (=extract 된 본문) 좌표계.
-        // highlight 는 root.textContent 누적 offset 기준이라 좌표 변환 필요.
-        // Readability fallback 시 cleanedText 가 root 의 일부분이므로 더 결정적.
-        const relocated = relocateSpansToRoot(res.spans as Span[], detect.cleanedText, root);
-        applyHighlights(root, relocated);
-      } catch {
-        errors++;
-      } finally {
-        done++;
-        if (!ac.signal.aborted) {
-          updateBadge({ phase: "running", done, total: enabledKinds.length });
-        }
-      }
-    }),
-  );
+  const tick = (failed: boolean): void => {
+    if (failed) errors++;
+    done++;
+    if (!ac.signal.aborted) {
+      updateBadge({ phase: "running", done, total });
+    }
+  };
+
+  const spanTasks = enabledKinds.map(async (kind) => {
+    try {
+      const res = await client.analyze(kind, cleanedText);
+      if (ac.signal.aborted) return;
+      // 워커가 반환한 spans 는 cleanedText 좌표계 → root.textContent 좌표계로 재매핑.
+      const relocated = relocateSpansToRoot(res.spans as Span[], cleanedText, root);
+      applyHighlights(root, relocated);
+      tick(false);
+    } catch {
+      tick(true);
+    }
+  });
+
+  const briefingTask = client
+    .briefing(cleanedText)
+    .then((b) => {
+      if (ac.signal.aborted) return;
+      renderCards(root, b);
+      tick(false);
+    })
+    .catch(() => tick(true));
+
+  const onelineTask = client
+    .oneline(cleanedText)
+    .then((o) => {
+      if (ac.signal.aborted) return;
+      renderOneline(root, o);
+      tick(false);
+    })
+    .catch(() => tick(true));
+
+  const characterTask = client
+    .character(cleanedText)
+    .then((c) => {
+      if (ac.signal.aborted) return;
+      renderCharacter(c);
+      tick(false);
+    })
+    .catch(() => tick(true));
+
+  await Promise.allSettled([...spanTasks, briefingTask, onelineTask, characterTask]);
 
   if (ac.signal.aborted) return;
-  if (errors === enabledKinds.length) {
-    updateBadge({ phase: "error", done, total: enabledKinds.length, message: "서버 응답 실패 — 옵션 확인" });
+  if (errors === total) {
+    updateBadge({ phase: "error", done, total, message: "서버 응답 실패 — 옵션 확인" });
   } else if (errors > 0) {
-    updateBadge({ phase: "ok", done: done - errors, total: enabledKinds.length, message: `완료(부분 실패 ${errors})` });
+    updateBadge({ phase: "ok", done: done - errors, total, message: `완료(부분 실패 ${errors})` });
   } else {
-    updateBadge({ phase: "ok", done, total: enabledKinds.length });
+    updateBadge({ phase: "ok", done, total });
   }
 }
 
@@ -191,6 +236,8 @@ function onUrlChange(): void {
   inflight?.abort();
   hideBadge();
   hidePopover();
+  removeCardsAndOneline();
+  resetCharacterDismiss();
   // SPA가 DOM 을 갱신할 시간을 짧게 준다 — 너무 빨리 추출하면 이전 본문이 잡힘.
   if (runDebounce) clearTimeout(runDebounce);
   runDebounce = setTimeout(() => {

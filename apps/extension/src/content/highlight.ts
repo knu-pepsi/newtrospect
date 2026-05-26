@@ -19,10 +19,16 @@ import type { AnalysisKind, Span } from "@newtrospect/core/server";
  *   popover 가 클릭 시 그 자리에서 종류별 표시를 만들 수 있게 한다.
  */
 
+/**
+ * 우선순위: 노랑(context) < 빨강(sensational) < (파랑 term, 초록 quantitative)
+ * - 파랑/초록 동시 후보면 파랑(term) 우선
+ * - 한 위치에 여러 종류가 겹치면 시각·툴팁 모두 우선순위 최고 1개만 노출
+ * (사양: specs/02-하이라이트고도화.md)
+ */
 const INLINE_PRIORITY: Record<Exclude<AnalysisKind, "context">, number> = {
-  sensational: 0,
+  term: 0,
   quantitative: 1,
-  term: 2,
+  sensational: 2,
 };
 
 export const HIGHLIGHT_CLASS: Record<AnalysisKind, string> = {
@@ -37,6 +43,22 @@ interface MergedMark {
   end: number;
   primary: AnalysisKind;
   all: Span[];
+}
+
+/**
+ * 파랑(term)·초록(quantitative) 영역이 겹치면 초록 쪽을 제거.
+ * 같은 위치에 두 색이 동시에 그려지면 사용자가 어느 popover 가 뜰지 헷갈리는 버그 방지.
+ */
+function suppressTermQuantitativeOverlap(spans: Span[]): Span[] {
+  const terms = spans.filter((s) => s.kind === "term");
+  if (terms.length === 0) return spans;
+  return spans.filter((s) => {
+    if (s.kind !== "quantitative") return true;
+    for (const t of terms) {
+      if (s.start < t.end && s.end > t.start) return false;
+    }
+    return true;
+  });
 }
 
 function mergeInlineOverlaps(spans: Span[]): MergedMark[] {
@@ -106,7 +128,7 @@ function cpRangeToUtf16(text: string, cpStart: number, cpEnd: number): { start: 
 
 export function applyHighlights(root: Element, spans: Span[]): void {
   const contextSpans = spans.filter((s): s is Extract<Span, { kind: "context" }> => s.kind === "context");
-  const inlineSpans = spans.filter((s) => s.kind !== "context");
+  const inlineSpans = suppressTermQuantitativeOverlap(spans.filter((s) => s.kind !== "context"));
 
   // Pass 1: context 노란 배경 먼저 (서로 겹치면 합치되, 색은 노랑 유지)
   if (contextSpans.length > 0) {

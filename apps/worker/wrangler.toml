@@ -28,12 +28,27 @@ PROVIDER_SENSATIONAL = "gemini"
 PROVIDER_QUANTITATIVE = "gemini"
 PROVIDER_CONTEXT = "gemini"
 PROVIDER_DETECT = "gemini"
+PROVIDER_BRIEFING = "gemini"
+PROVIDER_ONELINE = "gemini"
+PROVIDER_CHARACTER = "gemini"
+PROVIDER_REWRITE = "gemini"
 
-MODEL_TERM = "gemini-3.1-flash-lite-preview"
-MODEL_SENSATIONAL = "gemini-3.1-flash-lite-preview"
-MODEL_QUANTITATIVE = "gemini-3.1-flash-lite-preview"
-MODEL_CONTEXT = "gemini-3.1-flash-lite-preview"
-MODEL_DETECT = "gemini-3.1-flash-lite-preview"
+# 모델 차등 (2026-05-26):
+#   추론 부담 큰 곳 (외부 지식·맥락·프레이밍 판별·배경 카드) → Gemini 3.1 Pro
+#     term / sensational / context / briefing
+#   가벼운 추출·분류·1문장 작성 → flash-latest
+#     quantitative / character / oneline / rewrite
+#   호출량 많고 빠른 판정만 필요 → flash-lite
+#     detect
+MODEL_TERM = "gemini-3.1-pro-preview"
+MODEL_SENSATIONAL = "gemini-3.1-pro-preview"
+MODEL_CONTEXT = "gemini-3.1-pro-preview"
+MODEL_BRIEFING = "gemini-3.1-pro-preview"
+MODEL_QUANTITATIVE = "gemini-flash-latest"
+MODEL_CHARACTER = "gemini-flash-latest"
+MODEL_ONELINE = "gemini-flash-latest"
+MODEL_REWRITE = "gemini-flash-latest"
+MODEL_DETECT = "gemini-flash-lite-latest"
 
 # 캐시 TTL (초). 1시간.
 CACHE_TTL_SEC = "3600"

@@ -14,7 +14,8 @@ export const workersAIProvider: AIProvider = {
         { role: "system", content: prompt.system },
         { role: "user", content: args.text },
       ],
-      max_tokens: 1024,
+      // 긴 본문 대응 — 모델별 한도(보통 ~4096)에 맞춰 큼지막하게. (specs/05)
+      max_tokens: 4096,
       temperature: 0.1,
     }) as unknown;
 

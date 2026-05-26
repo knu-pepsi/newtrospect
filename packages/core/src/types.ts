@@ -68,3 +68,112 @@ export const ANALYZE_ENDPOINTS = {
   quantitative: "/api/analyze/quantitative",
   context: "/api/analyze/context",
 } as const satisfies Record<AnalysisKind, string>;
+
+/* ── 한줄정리·카드뉴스 (specs/01) ─────────────────────────────────────────── */
+/*
+ * 7개 병렬 아키텍처: 카드 3장과 한 줄 정리는 *각자 별도 AI 호출*.
+ * 모델 차등 — 카드는 외부 지식·추론 필요(Pro), 한 줄은 본문 압축(flash) 충분.
+ */
+
+/** 본문 위쪽에 표시되는 *읽기 전 맥락 카드* 1장. 외부 배경지식 기반. */
+export interface BriefingCard {
+  title: string;
+  body: string;
+}
+
+export interface BriefingRequest {
+  text: string;
+  lang: "ko";
+}
+
+export interface BriefingResponse {
+  /** 정확히 3장. 본문 이해를 돕는 배경 맥락 (인물·기관·사건 배경·관련 통계 등). */
+  cards: BriefingCard[];
+  model: string;
+  elapsedMs: number;
+  cached?: boolean;
+}
+
+export const BRIEFING_ENDPOINT = "/api/analyze/briefing";
+
+export interface OneLineRequest {
+  text: string;
+  lang: "ko";
+}
+
+export interface OneLineResponse {
+  /** 본문 한 줄 요약. 마침표 포함 1문장. */
+  oneLine: string;
+  model: string;
+  elapsedMs: number;
+  cached?: boolean;
+}
+
+export const ONELINE_ENDPOINT = "/api/analyze/oneline";
+
+/* ── 자극적 표현 → 온화한 표현 변환 (specs/03) ───────────────────────────── */
+
+export interface RewriteSensationalRequest {
+  /** 원문 본문에서 자극적이라고 표시된 *문장 1개*. */
+  text: string;
+  /** 옵션 — popover 에 표시했던 reason (모델에게 추가 단서로 전달). */
+  reason?: string;
+}
+
+export interface RewriteSensationalResponse {
+  /** 자극 어휘를 중립적·사실 중심으로 다시 쓴 문장. */
+  rewritten: string;
+  model: string;
+  elapsedMs: number;
+  cached?: boolean;
+}
+
+export const REWRITE_SENSATIONAL_ENDPOINT = "/api/rewrite/sensational";
+
+/* ── 글 성격 분석 (specs/04) ─────────────────────────────────────────────── */
+
+export type CharacterSignalKey =
+  | "fact_claim"      // 사실주장
+  | "opinion"         // 의견/해석
+  | "value_judgment"  // 가치판단
+  | "sensational"     // 자극표현
+  | "evidence"        // 근거제시
+  | "causation"       // 인과주장
+  | "prediction";     // 예측
+
+/** 1=적음, 2=일부 있음, 3=두드러짐. */
+export type CharacterLevel = 1 | 2 | 3;
+
+export const CHARACTER_SIGNAL_LABELS: Record<CharacterSignalKey, string> = {
+  fact_claim: "사실주장",
+  opinion: "의견/해석",
+  value_judgment: "가치판단",
+  sensational: "자극표현",
+  evidence: "근거제시",
+  causation: "인과주장",
+  prediction: "예측",
+};
+
+export const CHARACTER_SIGNAL_ORDER: readonly CharacterSignalKey[] = [
+  "fact_claim",
+  "opinion",
+  "value_judgment",
+  "sensational",
+  "evidence",
+  "causation",
+  "prediction",
+];
+
+export interface CharacterRequest {
+  text: string;
+  lang: "ko";
+}
+
+export interface CharacterResponse {
+  signals: Record<CharacterSignalKey, CharacterLevel>;
+  model: string;
+  elapsedMs: number;
+  cached?: boolean;
+}
+
+export const CHARACTER_ENDPOINT = "/api/analyze/character";

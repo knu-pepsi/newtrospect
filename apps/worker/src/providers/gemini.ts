@@ -30,7 +30,15 @@ export const geminiProvider: AIProvider = {
       generationConfig: {
         temperature: 0.1,
         response_mime_type: "application/json",
-        maxOutputTokens: 2048,
+        // Gemini 3.x thinking mode 응답 잘림 대응 (2026-05-26):
+        //   - maxOutputTokens 는 *thought+text 합산 캡* (실측). thinkingBudget 의 2배 이상.
+        //   - includeThoughts: false 로 응답에서 thought signature 제외.
+        // Pro 모델은 thinking 많이 함 + 본문 길면 items 15개+ 출력 → 둘 다 넉넉히.
+        maxOutputTokens: 16384,
+        thinkingConfig: {
+          thinkingBudget: 8192,
+          includeThoughts: false,
+        },
       },
     };
 

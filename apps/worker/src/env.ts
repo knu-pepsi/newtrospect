@@ -9,12 +9,24 @@ export interface Env {
   PROVIDER_QUANTITATIVE: string;
   PROVIDER_CONTEXT: string;
   PROVIDER_DETECT: string;
+  /** specs/01 카드 3장 — 외부 지식·추론 부담 큼. */
+  PROVIDER_BRIEFING: string;
+  /** specs/01 한 줄 요약 — 본문 압축, 가벼움. */
+  PROVIDER_ONELINE: string;
+  /** specs/04 글 성격 7신호 — 분류 부담 가벼움. */
+  PROVIDER_CHARACTER: string;
+  /** specs/03 자극→온화 변환 — 1문장 재작성. */
+  PROVIDER_REWRITE: string;
 
   MODEL_TERM: string;
   MODEL_SENSATIONAL: string;
   MODEL_QUANTITATIVE: string;
   MODEL_CONTEXT: string;
   MODEL_DETECT: string;
+  MODEL_BRIEFING: string;
+  MODEL_ONELINE: string;
+  MODEL_CHARACTER: string;
+  MODEL_REWRITE: string;
 
   CACHE_TTL_SEC: string;
 
@@ -50,6 +62,38 @@ export function detectProvider(env: Env): string {
 
 export function detectModel(env: Env): string {
   return env.MODEL_DETECT;
+}
+
+export function briefingProvider(env: Env): string {
+  return env.PROVIDER_BRIEFING;
+}
+
+export function briefingModel(env: Env): string {
+  return env.MODEL_BRIEFING;
+}
+
+export function onelineProvider(env: Env): string {
+  return env.PROVIDER_ONELINE;
+}
+
+export function onelineModel(env: Env): string {
+  return env.MODEL_ONELINE;
+}
+
+export function characterProvider(env: Env): string {
+  return env.PROVIDER_CHARACTER;
+}
+
+export function characterModel(env: Env): string {
+  return env.MODEL_CHARACTER;
+}
+
+export function rewriteProvider(env: Env): string {
+  return env.PROVIDER_REWRITE;
+}
+
+export function rewriteModel(env: Env): string {
+  return env.MODEL_REWRITE;
 }
 
 export function cacheTtlSec(env: Env): number {
